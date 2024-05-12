@@ -1,0 +1,158 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Memory block structure
+struct MemoryBlock {
+    int start;
+    int size;
+    bool free;
+    struct MemoryBlock* next;
+};
+
+// Process structure
+struct Process {
+    char name[10];
+    int size;
+    int executionTime;
+    struct Process* next;
+};
+
+// Global variables
+struct MemoryBlock* memoryMap = NULL; // Linked list to represent memory blocks
+struct Process* programQueue = NULL; // Queue of programs waiting to be loaded
+
+// Function prototypes
+void initializeMemory(int memorySize, int unitSize);
+struct MemoryBlock* findFreeBlock(int size, char fitType, int memorySize);
+void allocateMemory(struct Process* process, char fitType, int memorySize);
+void enqueueProcess(struct Process* process);
+void displayMemoryStatus(int memorySize, int unitSize);
+
+int main() {
+    int memorySize, unitSize;
+    char fitType;
+
+    // Get memory size, unit size, and fit type from user
+    printf("Enter memory size: ");
+    scanf("%d", &memorySize);
+    printf("Enter unit size: ");
+    scanf("%d", &unitSize);
+    printf("Enter fit type (F for First Fit, B for Best Fit, W for Worst Fit): ");
+    scanf(" %c", &fitType);
+
+    // Initialize memory
+    initializeMemory(memorySize, unitSize);
+
+    // Example programs
+    struct Process* p1 = (struct Process*)malloc(sizeof(struct Process));
+    strcpy(p1->name, "P1");
+    p1->size = 50;
+    p1->executionTime = 5;
+    p1->next = NULL;
+
+    struct Process* p2 = (struct Process*)malloc(sizeof(struct Process));
+    strcpy(p2->name, "P2");
+    p2->size = 100;
+    p2->executionTime = 10;
+    p2->next = NULL;
+
+    struct Process* p3 = (struct Process*)malloc(sizeof(struct Process));
+    strcpy(p3->name, "P3");
+    p3->size = 200;
+    p3->executionTime = 15;
+    p3->next = NULL;
+
+    // Add programs to the queue
+    enqueueProcess(p1);
+    enqueueProcess(p2);
+    enqueueProcess(p3);
+
+    // Allocate memory for programs in the queue using specified fit type
+    allocateMemory(programQueue, fitType, memorySize);
+
+    // Display memory status
+    displayMemoryStatus(memorySize, unitSize);
+
+    // Free memory allocated for programs
+    struct Process* current = programQueue;
+    struct Process* temp;
+    while (current != NULL) {
+        temp = current;
+        current = current->next;
+        free(temp);
+    }
+
+    // Free memory allocated for memory map
+    struct MemoryBlock* currentBlock = memoryMap;
+    struct MemoryBlock* tempBlock;
+    while (currentBlock != NULL) {
+        tempBlock = currentBlock;
+        currentBlock = currentBlock->next;
+        free(tempBlock);
+    }
+
+    return 0;
+}
+
+void initializeMemory(int memorySize, int unitSize) {
+    for (int i = 0; i < memorySize / unitSize; i++) {
+        struct MemoryBlock* block = (struct MemoryBlock*)malloc(sizeof(struct MemoryBlock));
+        block->start = i * unitSize;
+        block->size = unitSize;
+        block->free = true;
+        block->next = memoryMap;
+        memoryMap = block;
+    }
+}
+
+struct MemoryBlock* findFreeBlock(int size, char fitType, int memorySize) {
+    struct MemoryBlock* current = memoryMap;
+    struct MemoryBlock* bestFit = NULL;
+    int bestFitSize = memorySize;
+    while (current != NULL) {
+        if (current->free && current->size >= size) {
+            if (fitType == 'F') { // First Fit
+                return current;
+            } else if (fitType == 'B') { // Best Fit
+                if (current->size < bestFitSize) {
+                    bestFit = current;
+                    bestFitSize = current->size;
+                }
+            } else if (fitType == 'W') { // Worst Fit
+                if (current->size > bestFitSize) {
+                    bestFit = current;
+                    bestFitSize = current->size;
+                }
+            }
+        }
+        current = current->next;
+    }
+    return bestFit;
+}
+
+void allocateMemory(struct Process* process, char fitType, int memorySize) {
+    struct MemoryBlock* block = findFreeBlock(process->size, fitType, memorySize);
+    if (block != NULL) {
+        block->free = false;
+        printf("Allocated memory for program %s using %c Fit\n", process->name, fitType);
+    } else {
+        printf("Memory allocation failed for program %s using %c Fit: Insufficient memory\n", process->name, fitType);
+    }
+}
+
+void enqueueProcess(struct Process* process) {
+    process->next = programQueue;
+    programQueue = process;
+}
+
+void displayMemoryStatus(int memorySize, int unitSize) {
+    printf("Memory Status:\n");
+    struct MemoryBlock* current = memoryMap;
+    while (current != NULL) {
+        printf("Block %d: %s\n", current->start / unitSize, (current->free ? "Free" : "Occupied"));
+        current = current->next;
+    }
+    printf("\n");
+}
